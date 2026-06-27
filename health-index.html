@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personal Health Index</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#1a1d23; --card2:#22262e; --line:#2c313a;
+    --ink:#e8eaed; --muted:#9aa0ab; --faint:#6b7280;
+    --green:#34d399; --amber:#fbbf24; --red:#f87171; --accent:#60a5fa;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.5; padding:16px;
+    max-width:760px; margin:0 auto; -webkit-font-smoothing:antialiased;}
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding-bottom:14px; border-bottom:1px solid var(--line); margin-bottom:20px; flex-wrap:wrap;}
+  .brand{display:flex; align-items:center; gap:8px; font-weight:600; font-size:15px;}
+  .brand svg{width:20px; height:20px; stroke:var(--muted);}
+  .daynav{display:flex; align-items:center; gap:6px;}
+  .daynav button, .upload-btn{background:var(--card2); border:1px solid var(--line); color:var(--ink);
+    border-radius:8px; padding:6px 10px; font-size:13px; cursor:pointer;}
+  .daynav button:hover, .upload-btn:hover{background:var(--card);}
+  .daylabel{min-width:108px; text-align:center; font-size:13px; color:var(--muted);}
+  .hero{display:flex; flex-direction:column; align-items:center; gap:4px; margin:8px 0 26px;}
+  .hero .kick{font-size:11px; color:var(--faint); text-transform:uppercase; letter-spacing:.08em;}
+  .hero .score{font-size:72px; font-weight:600; line-height:1;}
+  .hero .verdict{font-size:14px; margin-top:2px; text-align:center;}
+  .sectlabel{font-size:12px; color:var(--faint); margin:0 0 8px 2px; text-transform:uppercase; letter-spacing:.05em;}
+  .grid{display:grid; gap:10px; margin-bottom:22px;}
+  .scored{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));}
+  .tracked{grid-template-columns:repeat(auto-fit,minmax(120px,1fr));}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; cursor:pointer; transition:border-color .15s;}
+  .card:hover{border-color:var(--faint);}
+  .card .chead{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+  .card .clabel{font-size:12px; color:var(--muted); display:flex; align-items:center; gap:5px;}
+  .card .cweight{font-size:11px; color:var(--faint);}
+  .card .cval{font-size:22px; font-weight:600;}
+  .card .cval small{font-size:12px; color:var(--faint); font-weight:400;}
+  .bar{height:5px; background:var(--card2); border-radius:3px; overflow:hidden; margin-top:8px;}
+  .bar > div{height:100%; border-radius:3px;}
+  .ins{margin-top:10px; padding-top:10px; border-top:1px solid var(--line);}
+  .ins .tier{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px;}
+  .ins .dot{width:7px; height:7px; border-radius:50%;}
+  .ins .why{font-size:12px; color:var(--muted); line-height:1.45;}
+  .ins .cross{font-size:12px; color:var(--accent); margin-top:4px; line-height:1.45;}
+  .tcard{background:var(--card2); border:1px solid transparent; border-radius:12px; padding:11px 13px; cursor:pointer;}
+  .tcard:hover{border-color:var(--line);}
+  .tcard .clabel{font-size:12px; color:var(--muted); margin-bottom:4px; display:flex; align-items:center; gap:5px;}
+  .tcard .cval{font-size:18px; font-weight:600;}
+  .tcard .cval small{font-size:11px; color:var(--faint); font-weight:400;}
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:18px;}
+  .panel h3{font-size:14px; font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:6px;}
+  .gstats{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px;}
+  .gstats .gs .l{font-size:11px; color:var(--faint); margin-bottom:2px;}
+  .gstats .gs .v{font-size:22px; font-weight:600;}
+  .spike-row{display:flex; justify-content:space-between; align-items:center; gap:8px;
+    padding:9px 11px; background:var(--card2); border-radius:9px; margin-bottom:7px; font-size:13px; cursor:pointer; border:1px solid transparent;}
+  .spike-row:hover{border-color:var(--line);}
+  .spike-row .meta{color:var(--muted); font-size:12px;}
+  .spike-note{font-size:12px; color:var(--accent); margin-left:6px;}
+  .hint{font-size:11px; color:var(--faint); margin-top:8px;}
+  .modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; padding:20px; z-index:50;}
+  .modal-bg.show{display:flex;}
+  .modal{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; max-width:580px; width:100%;}
+  .modal .mhead{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  .modal .mhead h3{font-size:16px; font-weight:600;}
+  .modal .mclose{background:none; border:none; color:var(--muted); font-size:22px; cursor:pointer; line-height:1;}
+  .modal .mrange{font-size:12px; color:var(--faint); margin-bottom:16px;}
+  .empty{color:var(--faint); font-size:13px; text-align:center; padding:30px 0;}
+  svg.chart{width:100%; height:auto; display:block;}
+  .axlbl{font-size:9px; fill:var(--faint);}
+  .ptlbl{font-size:10px; fill:var(--ink);}
+  .upload-input{display:none;}
+  .rangefilter{display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap; font-size:12px; color:var(--muted);}
+  .rangefilter input[type=date]{background:var(--card2); border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:3px 6px; font-size:12px; color-scheme:dark; margin-left:4px;}
+  .rangefilter button{background:var(--card2); border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:3px 10px; font-size:12px; cursor:pointer;}
+  .datepick{background:var(--card2); border:1px solid var(--line); color:var(--ink); border-radius:8px; padding:5px 8px; font-size:13px; color-scheme:dark;}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M3 12h4l2 5 4-12 2 7h6"/></svg>
+      Personal health index
+    </div>
+    <div class="daynav">
+      <button id="prevDay">&#8249;</button>
+      <input type="date" id="datePick" class="datepick">
+      <button id="nextDay">&#8250;</button>
+      <button class="upload-btn" id="uploadBtn">&#8593; Upload</button>
+      <input type="file" class="upload-input" id="uploadInput" multiple accept=".csv">
+    </div>
+  </div>
+
+  <div class="hero" id="heroBlock" style="cursor:pointer;">
+    <span class="kick">North star &middot; tap for trend</span>
+    <span class="score" id="heroScore">—</span>
+    <span class="verdict" id="heroVerdict"></span>
+  </div>
+
+  <div class="sectlabel">Scored — these make the index</div>
+  <div class="grid scored" id="scoredGrid"></div>
+
+  <div class="sectlabel">Tracked — shown, not scored</div>
+  <div class="grid tracked" id="trackedGrid"></div>
+
+  <div class="panel" id="glucosePanel">
+    <h3>&#128167; Glucose</h3>
+    <div id="glucoseBody"></div>
+  </div>
+
+  <div class="panel">
+    <h3>&#128200; Index trend</h3>
+    <div id="trendBody"></div>
+  </div>
+
+  <div class="modal-bg" id="modalBg">
+    <div class="modal">
+      <div class="mhead"><h3 id="modalTitle">Metric</h3><button class="mclose" id="modalClose">&times;</button></div>
+      <div class="mrange" id="modalRange"></div>
+      <div id="modalChart"></div>
+    </div>
+  </div>
+
+<script>
+const DATA = {"glucose": {"2026-06-25": {"avg": 132, "tir": 2, "sd": 10.7, "curve": [[814, 107], [819, 109], [824, 111], [829, 117], [834, 118], [839, 116], [844, 120], [849, 125], [854, 131], [859, 138], [864, 147], [869, 143], [874, 157], [879, 157], [884, 149], [889, 147], [894, 146], [899, 155], [904, 152], [909, 151], [914, 136], [919, 141], [924, 129], [929, 133], [934, 130], [939, 126], [944, 123], [949, 121], [954, 121], [959, 123], [964, 127], [969, 126], [974, 125], [979, 127], [984, 131], [989, 129], [994, 133], [999, 133], [1004, 134], [1009, 142], [1014, 143], [1019, 136], [1024, 137], [1029, 137], [1034, 144], [1039, 142], [1044, 135], [1049, 128], [1054, 121], [1059, 125], [1064, 121], [1069, 122], [1074, 120], [1079, 112], [1084, 114], [1089, 120], [1094, 144], [1099, 132], [1104, 138], [1109, 144], [1114, 150], [1119, 145], [1124, 136], [1129, 139], [1134, 135], [1139, 136], [1144, 138], [1149, 140], [1154, 142], [1159, 141], [1164, 140], [1169, 137], [1174, 139], [1179, 136], [1184, 131], [1189, 131], [1194, 136], [1199, 134], [1204, 121], [1209, 124], [1214, 118], [1219, 115], [1224, 115], [1229, 122], [1234, 132], [1239, 138], [1244, 129], [1249, 133], [1254, 148], [1259, 134], [1264, 124], [1269, 151], [1274, 125], [1279, 115], [1284, 126], [1289, 126], [1294, 126], [1299, 127], [1304, 130], [1309, 111], [1314, 123], [1319, 135], [1324, 147], [1329, 150], [1334, 140], [1339, 124], [1344, 129], [1349, 145], [1354, 135], [1359, 130], [1364, 134], [1369, 137], [1374, 133], [1379, 133], [1384, 128], [1389, 128], [1395, 123], [1400, 122], [1405, 116], [1410, 120], [1415, 132], [1420, 131], [1425, 128], [1430, 139], [1435, 138]], "spikes": [{"start": 814, "startv": 107, "peakv": 157, "rise": 60, "recover": 71}, {"start": 951, "startv": 119, "peakv": 149, "rise": 60, "recover": 34}, {"start": 1055, "startv": 121, "peakv": 151, "rise": 60, "recover": 9}, {"start": 1207, "startv": 117, "peakv": 148, "rise": 46, "recover": 7}, {"start": 1275, "startv": 122, "peakv": 153, "rise": 52, "recover": 9}]}, "2026-06-26": {"avg": 105, "tir": 65, "sd": 13.5, "curve": [[0, 121], [5, 113], [10, 112], [15, 111], [20, 116], [25, 123], [30, 114], [35, 112], [40, 114], [45, 118], [50, 128], [55, 120], [60, 116], [65, 115], [70, 121], [75, 126], [80, 121], [85, 127], [90, 134], [95, 123], [100, 121], [105, 119], [110, 117], [115, 112], [120, 110], [125, 113], [130, 107], [135, 103], [140, 101], [145, 108], [150, 105], [155, 96], [160, 102], [165, 106], [170, 109], [175, 113], [180, 109], [185, 113], [190, 105], [195, 102], [200, 100], [205, 93], [210, 90], [215, 95], [220, 90], [225, 97], [230, 101], [235, 98], [240, 89], [245, 103], [250, 103], [255, 94], [260, 90], [265, 104], [270, 95], [275, 91], [280, 93], [285, 92], [290, 82], [295, 84], [300, 82], [305, 87], [310, 100], [315, 94], [320, 89], [325, 92], [330, 94], [335, 86], [340, 87], [345, 87], [350, 89], [355, 81], [360, 86], [365, 91], [370, 88], [375, 85], [380, 93], [385, 97], [390, 93], [395, 84], [400, 82], [405, 85], [410, 92], [420, 88], [425, 83], [430, 87], [435, 82], [440, 88], [445, 92], [450, 85], [455, 88], [460, 87], [465, 84], [470, 87], [475, 93], [480, 94], [485, 94], [490, 90], [495, 93], [500, 102], [505, 94], [510, 99], [515, 91], [520, 89], [525, 88], [530, 88], [535, 89], [540, 89], [545, 93], [550, 93], [555, 106], [560, 106], [565, 110], [570, 104], [575, 104], [580, 107], [591, 108], [596, 101], [601, 101], [606, 106], [611, 104], [616, 100], [621, 101], [626, 102], [631, 100], [636, 99], [641, 100], [646, 100], [651, 106], [656, 107], [661, 113], [666, 120], [671, 122], [676, 127], [681, 142], [686, 132], [691, 131], [696, 134], [702, 131], [707, 124], [712, 122], [717, 117], [722, 112], [727, 109], [732, 112], [737, 110], [742, 114], [747, 115], [752, 113], [757, 112], [762, 111], [767, 109], [772, 108], [777, 99], [782, 104], [787, 101], [792, 100], [797, 97], [802, 96], [807, 93], [812, 97], [817, 96], [822, 100], [827, 108], [832, 107], [837, 107], [842, 112], [847, 106], [852, 104], [857, 106], [862, 109], [867, 107], [872, 107], [877, 110], [882, 99], [887, 100], [892, 101], [897, 97], [902, 98], [907, 98], [912, 97], [917, 96], [922, 96], [927, 96], [932, 94], [937, 97], [942, 94], [947, 94], [952, 96], [957, 95], [962, 95], [967, 95], [972, 96], [977, 96], [982, 91], [987, 87], [992, 90], [997, 90], [1002, 83], [1007, 86], [1012, 95], [1017, 102], [1022, 107], [1027, 109], [1032, 113], [1037, 117], [1042, 130], [1047, 129], [1052, 130], [1057, 126], [1062, 122], [1067, 120], [1072, 119], [1077, 116], [1082, 115], [1087, 116], [1092, 120], [1097, 115], [1102, 111], [1107, 111], [1112, 108], [1117, 108], [1122, 100], [1127, 98], [1132, 107], [1137, 101], [1142, 99], [1147, 99], [1152, 101], [1157, 103], [1162, 102], [1167, 102], [1172, 99], [1177, 100], [1182, 101], [1187, 101], [1192, 98], [1197, 92], [1202, 102], [1208, 102], [1213, 99], [1218, 93], [1223, 94], [1228, 99], [1233, 101], [1238, 104], [1243, 117], [1248, 123], [1253, 132], [1258, 128], [1263, 123], [1268, 115], [1273, 120], [1278, 128], [1283, 121], [1288, 123], [1293, 124], [1298, 122], [1303, 121], [1308, 123], [1313, 123], [1318, 117], [1323, 122], [1329, 120], [1334, 122], [1341, 130], [1346, 129], [1351, 132], [1356, 125], [1361, 132], [1366, 131], [1371, 131], [1376, 133], [1381, 128], [1386, 131], [1391, 129], [1396, 124], [1401, 108], [1406, 106], [1411, 117], [1416, 112], [1421, 114], [1426, 114], [1431, 115], [1436, 115]], "spikes": [{"start": 619, "startv": 102, "peakv": 133, "rise": 60, "recover": 38}, {"start": 980, "startv": 93, "peakv": 126, "rise": 60, "recover": 72}, {"start": 1192, "startv": 98, "peakv": 130, "rise": 60, "recover": 148}]}, "2026-06-27": {"avg": 102, "tir": 77, "sd": 15.9, "curve": [[0, 112], [6, 106], [11, 108], [16, 110], [21, 113], [26, 113], [31, 100], [37, 101], [42, 104], [47, 98], [52, 97], [57, 99], [62, 101], [67, 100], [72, 100], [77, 99], [82, 99], [87, 101], [92, 97], [97, 89], [102, 94], [107, 91], [112, 106], [117, 99], [122, 94], [127, 90], [132, 105], [137, 98], [142, 86], [147, 83], [152, 85], [157, 85], [162, 86], [167, 87], [172, 99], [177, 98], [182, 96], [187, 91], [192, 94], [197, 102], [202, 96], [207, 99], [212, 96], [217, 94], [222, 90], [227, 94], [232, 96], [237, 91], [242, 96], [247, 95], [252, 92], [257, 92], [262, 90], [267, 96], [272, 98], [277, 95], [282, 89], [287, 86], [292, 87], [297, 89], [302, 91], [307, 88], [312, 92], [317, 91], [322, 90], [327, 92], [332, 90], [337, 89], [342, 88], [347, 88], [352, 98], [357, 95], [362, 88], [367, 93], [372, 99], [377, 94], [382, 85], [387, 84], [392, 86], [397, 83], [402, 84], [407, 89], [412, 82], [417, 84], [422, 86], [427, 86], [432, 84], [437, 84], [442, 84], [447, 84], [452, 86], [457, 85], [462, 88], [467, 88], [472, 84], [477, 84], [482, 86], [492, 87], [497, 91], [502, 88], [507, 87], [512, 88], [517, 88], [522, 86], [527, 87], [532, 87], [537, 94], [542, 88], [547, 87], [552, 87], [557, 91], [562, 86], [567, 86], [572, 94], [577, 90], [582, 91], [587, 91], [592, 94], [597, 90], [602, 99], [607, 89], [612, 87], [617, 94], [622, 107], [627, 102], [632, 98], [637, 101], [642, 103], [647, 98], [652, 107], [657, 111], [662, 108], [667, 107], [672, 107], [677, 108], [683, 106], [693, 115], [698, 107], [703, 102], [708, 98], [713, 95], [718, 108], [723, 118], [728, 120], [733, 120], [738, 123], [743, 130], [748, 141], [753, 139], [758, 144], [763, 146], [768, 150], [773, 149], [778, 151], [783, 149], [788, 146], [793, 143], [798, 131], [803, 119], [808, 118], [813, 123], [818, 127], [823, 123], [828, 117], [833, 112], [838, 108], [843, 110], [848, 113], [853, 106], [858, 100], [863, 105], [868, 101], [873, 100], [879, 107], [884, 106], [889, 104], [894, 97], [899, 97], [904, 108], [909, 117], [914, 117], [919, 125], [924, 132], [929, 135], [934, 127], [939, 132], [944, 129], [949, 125], [954, 127], [959, 123], [964, 117], [969, 111], [974, 108], [979, 108], [984, 102], [989, 101], [994, 106], [999, 110], [1004, 113], [1009, 120], [1014, 116], [1019, 120]], "spikes": [{"start": 694, "startv": 112, "peakv": 143, "rise": 55, "recover": 50}, {"start": 866, "startv": 102, "peakv": 132, "rise": 58, "recover": 40}]}}, "rhr": {"2026-05-31": 60.0, "2026-06-01": 55.0, "2026-06-02": 55.0, "2026-06-03": 61.0, "2026-06-04": 54.0, "2026-06-05": 53.0, "2026-06-06": 60.0, "2026-06-07": 57.0, "2026-06-08": 55.0, "2026-06-09": 51.0, "2026-06-10": 59.0, "2026-06-11": 55.0, "2026-06-12": 57.0, "2026-06-13": 60.0, "2026-06-14": 60.0, "2026-06-15": 60.0, "2026-06-16": 75.0, "2026-06-17": 61.0, "2026-06-18": 60.0, "2026-06-19": 57.0, "2026-06-20": 59.0, "2026-06-21": 52.0, "2026-06-22": 52.0, "2026-06-23": 61.0, "2026-06-24": 61.0, "2026-06-25": 56.0, "2026-06-26": 53.0, "2026-06-27": 53.0}, "stress": {"2026-05-31": 52.0, "2026-06-01": 44.0, "2026-06-02": 49.0, "2026-06-03": 58.0, "2026-06-04": 36.0, "2026-06-05": 49.0, "2026-06-06": 66.0, "2026-06-07": 50.0, "2026-06-08": 34.0, "2026-06-09": 28.0, "2026-06-10": 58.0, "2026-06-11": 45.0, "2026-06-12": 44.0, "2026-06-13": 74.0, "2026-06-14": 71.0, "2026-06-15": 50.0, "2026-06-16": 48.0, "2026-06-17": 54.0, "2026-06-18": 50.0, "2026-06-19": 44.0, "2026-06-20": 39.0, "2026-06-21": 23.0, "2026-06-22": 42.0, "2026-06-23": 34.0, "2026-06-24": 52.0, "2026-06-25": 40.0, "2026-06-26": 35.0, "2026-06-27": 38.0}, "steps": {"2026-05-31": 16126, "2026-06-01": 8990, "2026-06-02": 9731, "2026-06-03": 5150, "2026-06-04": 3867, "2026-06-05": 10068, "2026-06-06": 6253, "2026-06-07": 5966, "2026-06-08": 3662, "2026-06-09": 202, "2026-06-10": 6969, "2026-06-11": 5170, "2026-06-12": 1249, "2026-06-13": 8551, "2026-06-14": 7017, "2026-06-15": 10847, "2026-06-16": 6144, "2026-06-17": 5150, "2026-06-18": 15607, "2026-06-19": 2879, "2026-06-20": 3871, "2026-06-21": 11453, "2026-06-22": 5236, "2026-06-23": 441, "2026-06-24": 1102, "2026-06-25": 2206, "2026-06-26": 7230, "2026-06-27": 1547}, "sleep": {"2026-06-27": 68, "2026-06-26": 53, "2026-06-25": 31, "2026-06-22": 65, "2026-06-21": 29, "2026-06-20": 48, "2026-06-19": 44, "2026-06-18": 54, "2026-06-12": 34, "2026-06-11": 41, "2026-06-08": 44, "2026-06-07": 54, "2026-06-05": 24, "2026-06-04": 79, "2026-06-02": 28, "2026-06-01": 64, "2026-05-31": 35}, "hrv": {"2026-06-27": 52, "2026-06-26": 50, "2026-06-25": 49, "2026-06-22": 48, "2026-06-21": 47, "2026-06-12": 50, "2026-06-11": 51, "2026-06-08": 50, "2026-06-07": 51, "2026-06-05": 51, "2026-06-04": 50, "2026-06-02": 48, "2026-06-01": 48, "2026-05-31": 47}, "bb": {"2026-06-27": 77, "2026-06-26": 85, "2026-06-25": 34, "2026-06-22": 44, "2026-06-21": 26, "2026-06-20": 41, "2026-06-19": 45, "2026-06-18": 38, "2026-06-12": 30, "2026-06-11": 55, "2026-06-08": 28, "2026-06-07": 45, "2026-06-05": 26, "2026-06-04": 73, "2026-06-02": 7, "2026-06-01": 41, "2026-05-31": 22}};
+const NOTES = {};
+const WEIGHTS = {glucose:0.35, rhr:0.25, steps:0.25, stress:0.15};
+const clamp = x => Math.max(0, Math.min(100, x));
+
+const TIER_COLOR = {good:'var(--green)', watch:'var(--amber)', poor:'var(--red)'};
+const TIER_LABEL = {good:'Good', watch:'Watch', poor:'Poor'};
+
+const INSIGHT = {
+  glucose: { tier:s=>s>=70?'good':s>=40?'watch':'poor', copy:{
+    good:'In range most of the day. This is the pattern to repeat.',
+    watch:'Drifting out of range. A walk after meals helps flatten it.',
+    poor:'High for much of the day \u2014 the zone to pull back from.'}},
+  rhr: { tier:s=>s>=75?'good':s>=45?'watch':'poor', copy:{
+    good:'Low and steady \u2014 a sign of good recovery.',
+    watch:'A little elevated, often after poor sleep or stress.',
+    poor:'Raised \u2014 your body is working hard even at rest.'}},
+  steps: { tier:s=>s>=70?'good':s>=40?'watch':'poor', copy:{
+    good:'A solid amount of movement today.',
+    watch:'Under your 10k goal. Movement blunts glucose spikes.',
+    poor:'Barely moved \u2014 the easiest lever you have to pull.'}},
+  stress: { tier:s=>s>=65?'good':s>=45?'watch':'poor', copy:{
+    good:'Low stress load today.',
+    watch:'Moderate stress. Cortisol can nudge glucose up.',
+    poor:'High stress \u2014 this alone can raise your glucose.'}}
+};
+
+function subScores(day){
+  const g = DATA.glucose[day];
+  return {
+    glucose: g ? clamp(g.tir) : null,
+    rhr: DATA.rhr[day]!=null ? clamp((75-DATA.rhr[day])/25*100) : null,
+    steps: DATA.steps[day]!=null ? clamp(DATA.steps[day]/10000*100) : null,
+    stress: DATA.stress[day]!=null ? clamp(100-DATA.stress[day]) : null
+  };
+}
+function phi(day){
+  const s = subScores(day);
+  if(s.glucose==null) return null;  // PHI requires glucose by design
+  let tot=0, wsum=0;
+  for(const k in WEIGHTS){ if(s[k]!=null){ tot+=s[k]*WEIGHTS[k]; wsum+=WEIGHTS[k]; } }
+  return wsum>0 ? Math.round(tot/wsum) : null;
+}
+const scoreColor = v => v>=70 ? 'var(--green)' : v>=50 ? 'var(--amber)' : 'var(--red)';
+
+function allDays(){
+  const s=new Set();
+  [DATA.glucose,DATA.rhr,DATA.stress,DATA.steps,DATA.sleep,DATA.hrv,DATA.bb].forEach(o=>Object.keys(o).forEach(d=>s.add(d)));
+  return [...s].sort();
+}
+let DAYS = allDays();
+const glucoseDays = Object.keys(DATA.glucose).sort();
+let curIdx = DAYS.length-1;
+
+function fmtDay(d){ const dt=new Date(d+'T00:00'); return dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
+function mins(m){ const h=Math.floor(m/60), mm=m%60; return (h<10?'0':'')+h+':'+(mm<10?'0':'')+mm; }
+
+// cross-metric "why" — only fires when the explaining data exists
+function crossNote(metric, day){
+  if(metric==='glucose'){
+    const sl=DATA.sleep[day];
+    if(sl!=null && sl<45) return 'Sleep was poor ('+sl+') the night before \u2014 that raises glucose.';
+    const st=DATA.stress[day];
+    if(st!=null && st>=55) return 'Stress was high ('+st+') today, which can lift glucose.';
+  }
+  if(metric==='rhr'){
+    const sl=DATA.sleep[day];
+    if(sl!=null && sl<45) return 'Tracks with poor sleep ('+sl+') that night.';
+  }
+  return '';
+}
+
+function render(){
+  const day = DAYS[curIdx];
+  document.getElementById('datePick').value = day;
+  const p = phi(day);
+  const hs=document.getElementById('heroScore');
+  hs.textContent = p==null?'\u2014':p; hs.style.color = p==null?'var(--ink)':scoreColor(p);
+  const s = subScores(day);
+  const vEl=document.getElementById('heroVerdict');
+  vEl.textContent = p==null ? 'No glucose data this day \u2014 index needs glucose to score.' : heroLine(p,s,day);
+  vEl.style.color = p==null?'var(--muted)':scoreColor(p);
+  renderScored(day,s);
+  renderTracked(day);
+  renderGlucose(day);
+  renderTrend();
+}
+function heroLine(p,s,day){
+  const lead = p>=70?'Strong day.':p>=50?'A mixed day.':'A rough day.';
+  // name the biggest drag or lift
+  const entries=Object.entries(s).filter(([k,v])=>v!=null).sort((a,b)=>a[1]-b[1]);
+  const worst=entries[0], best=entries[entries.length-1];
+  const name={glucose:'glucose',rhr:'resting HR',steps:'movement',stress:'stress'};
+  if(p>=70) return lead+' '+cap(name[best[0]])+' led the way.';
+  if(p>=50) return lead+' '+cap(name[best[0]])+' held up; '+name[worst[0]]+' pulled it down.';
+  return lead+' '+cap(name[worst[0]])+' was the main drag.';
+}
+const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+
+function insightBlock(metric, score, day){
+  if(score==null) return '<div class="ins"><div class="why">No data for this day.</div></div>';
+  const t=INSIGHT[metric].tier(score);
+  const cross=crossNote(metric, day);
+  return `<div class="ins">
+    <span class="tier" style="color:${TIER_COLOR[t]}"><span class="dot" style="background:${TIER_COLOR[t]}"></span>${TIER_LABEL[t]}</span>
+    <div class="why">${INSIGHT[metric].copy[t]}</div>
+    ${cross?`<div class="cross">${cross}</div>`:''}
+  </div>`;
+}
+function metricCard(metric,label,icon,weight,raw,score,day){
+  const pct=score==null?0:score, col=score==null?'var(--faint)':scoreColor(score);
+  return `<div class="card" data-metric="${metric}">
+    <div class="chead"><span class="clabel">${icon} ${label}</span><span class="cweight">${weight}</span></div>
+    <div class="cval">${raw}</div>
+    <div class="bar"><div style="width:${pct}%; background:${col};"></div></div>
+    ${insightBlock(metric,score,day)}
+  </div>`;
+}
+function renderScored(day,s){
+  const g=DATA.glucose[day];
+  const html =
+    metricCard('glucose','Glucose','&#128167;','35%', g?`${g.avg}<small> avg</small>`:'\u2014', s.glucose==null?null:Math.round(s.glucose), day) +
+    metricCard('rhr','Resting HR','&#10084;','25%', DATA.rhr[day]!=null?`${DATA.rhr[day]}<small> bpm</small>`:'\u2014', s.rhr==null?null:Math.round(s.rhr), day) +
+    metricCard('steps','Steps','&#128694;','25%', DATA.steps[day]!=null?DATA.steps[day].toLocaleString():'\u2014', s.steps==null?null:Math.round(s.steps), day) +
+    metricCard('stress','Stress','&#12316;','15%', DATA.stress[day]!=null?DATA.stress[day]:'\u2014', s.stress==null?null:Math.round(s.stress), day);
+  const grid=document.getElementById('scoredGrid'); grid.innerHTML=html;
+  grid.querySelectorAll('.card').forEach(c=>{ c.onclick=()=>openModal(c.dataset.metric); });
+}
+function tcard(label,icon,raw,key){
+  return `<div class="tcard" data-tk="${key}"><div class="clabel">${icon} ${label}</div><div class="cval">${raw}</div></div>`;
+}
+function renderTracked(day){
+  const sl=DATA.sleep[day], hv=DATA.hrv[day], b=DATA.bb[day];
+  const slLabel = sl==null?'':(sl>=70?' good':sl>=50?' fair':' poor');
+  const html =
+    tcard('Sleep','&#127769;', sl!=null?`${sl}<small>${slLabel}</small>`:'\u2014','sleep') +
+    tcard('HRV','&#128147;', hv!=null?`${hv}<small> ms</small>`:'\u2014','hrv') +
+    tcard('Body battery','&#128267;', b!=null?b:'\u2014','bb');
+  const grid=document.getElementById('trackedGrid'); grid.innerHTML=html;
+  grid.querySelectorAll('.tcard').forEach(c=>{ c.onclick=()=>openModal(c.dataset.tk); });
+}
+
+function renderGlucose(day){
+  const g=DATA.glucose[day], body=document.getElementById('glucoseBody');
+  if(!g){ body.innerHTML='<div class="empty">No glucose data for this day. Upload a CGM file that covers it.</div>'; return; }
+  let h = `<div class="gstats">
+    <div class="gs"><div class="l">Time in range</div><div class="v" style="color:${scoreColor(g.tir)}">${g.tir}%</div></div>
+    <div class="gs"><div class="l">Average</div><div class="v">${g.avg}</div></div>
+    <div class="gs"><div class="l">Variability</div><div class="v">${g.sd}</div></div>
+  </div>`;
+  h += curveSVG(g.curve);
+  h += `<div style="margin-top:18px; font-size:13px; font-weight:600; color:var(--muted);">Spikes (${g.spikes.length})</div>`;
+  if(g.spikes.length===0){ h+='<div class="hint">No significant spikes today.</div>'; }
+  g.spikes.forEach((sp,i)=>{
+    const note=NOTES[day+'-'+i];
+    h += `<div class="spike-row" data-spike="${i}">
+      <span>${mins(sp.start)} &nbsp;<span class="meta">${sp.startv} \u2192 ${sp.peakv} mg/dL</span>${note?`<span class="spike-note">\u00b7 ${note}</span>`:''}</span>
+      <span class="meta">peak in ${sp.rise}min${sp.recover!=null?' \u00b7 back down in '+sp.recover+'min':''}</span>
+    </div>`;
+  });
+  h += `<div class="hint">Tap a spike to note what you ate. Repeating times tell you where to focus.</div>`;
+  body.innerHTML=h;
+  body.querySelectorAll('.spike-row').forEach(r=>{
+    r.onclick=()=>{ const i=r.dataset.spike,k=day+'-'+i; const v=prompt('What did you eat or do before this spike?',NOTES[k]||''); if(v!=null){NOTES[k]=v.trim(); renderGlucose(day);} };
+  });
+}
+function curveSVG(curve){
+  const W=600,H=140,padL=26,padR=8;
+  const ys=curve.map(p=>p[1]);
+  const xmin=0,xmax=1440, ymin=Math.min(60,Math.min(...ys)-10), ymax=Math.max(160,Math.max(...ys)+10);
+  const X=t=>padL+(t-xmin)/(xmax-xmin)*(W-padL-padR);
+  const Y=v=>H-26-(v-ymin)/(ymax-ymin)*(H-26-12);
+  const pts=curve.map(p=>X(p[0])+','+Y(p[1])).join(' ');
+  const y70=Y(70),y110=Y(110),y140=Y(140);
+  let hours='';
+  for(let hh=0;hh<=24;hh+=6){ const x=X(hh*60); hours+=`<text class="axlbl" x="${x}" y="${H-6}" text-anchor="middle">${hh}:00</text>`; }
+  // peak/min markers with value labels
+  let mx=curve[0],mn=curve[0];
+  curve.forEach(p=>{ if(p[1]>mx[1])mx=p; if(p[1]<mn[1])mn=p; });
+  const marks=[mx,mn].map(p=>`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="3" fill="var(--accent)"/><text class="ptlbl" x="${X(p[0])}" y="${Y(p[1])-7}" text-anchor="middle">${p[1]}</text>`).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Glucose curve">
+    <rect x="${padL}" y="${y110}" width="${W-padL-padR}" height="${y70-y110}" fill="var(--green)" opacity="0.07"/>
+    <line x1="${padL}" y1="${y70}" x2="${W-padR}" y2="${y70}" stroke="var(--line)" stroke-dasharray="3 3"/>
+    <line x1="${padL}" y1="${y110}" x2="${W-padR}" y2="${y110}" stroke="var(--line)" stroke-dasharray="3 3"/>
+    <line x1="${padL}" y1="${y140}" x2="${W-padR}" y2="${y140}" stroke="var(--red)" stroke-dasharray="3 3" opacity="0.4"/>
+    <text class="axlbl" x="2" y="${y70+3}">70</text>
+    <text class="axlbl" x="2" y="${y110+3}">110</text>
+    <text class="axlbl" x="2" y="${y140+3}">140</text>
+    <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+    ${marks}${hours}
+  </svg>`;
+}
+
+function renderTrend(){
+  const body=document.getElementById('trendBody');
+  const pts = glucoseDays.map(d=>({d, v:phi(d)})).filter(p=>p.v!=null);
+  if(pts.length<2){ body.innerHTML='<div class="empty">Need at least 2 scored days for a trend. You have '+pts.length+' \u2014 log more glucose stints to grow this.</div>'; return; }
+  body.innerHTML = lineSVG(pts.map(p=>p.v), pts.map(p=>fmtDay(p.d)));
+}
+function lineSVG(vals,labels){
+  const W=600,H=170,padL=30,padR=14,bot=26;
+  const ymin=0,ymax=100;
+  const X=i=>padL+(vals.length===1?0.5:i/(vals.length-1))*(W-padL-padR);
+  const Y=v=>H-bot-(v-ymin)/(ymax-ymin)*(H-bot-16);
+  const line=vals.map((v,i)=>X(i)+','+Y(v)).join(' ');
+  let dots='';
+  vals.forEach((v,i)=>{
+    dots+=`<circle cx="${X(i)}" cy="${Y(v)}" r="4" fill="${scoreColor(v)}"/>`;
+    dots+=`<text class="ptlbl" x="${X(i)}" y="${Y(v)-9}" text-anchor="middle">${v}</text>`;
+    dots+=`<text class="axlbl" x="${X(i)}" y="${H-7}" text-anchor="middle">${labels[i]}</text>`;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Index trend line">
+    <line x1="${padL}" y1="${Y(50)}" x2="${W-padR}" y2="${Y(50)}" stroke="var(--line)" stroke-dasharray="3 3"/>
+    <text class="axlbl" x="2" y="${Y(50)+3}">50</text>
+    <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    ${dots}
+  </svg>`;
+}
+
+const METRIC_SERIES = {
+  phi:{name:'Personal health index', get:()=>glucoseDays.map(d=>({d,v:phi(d)})).filter(p=>p.v!=null)},
+  glucose:{name:'Glucose (daily avg)', get:()=>glucoseDays.map(d=>({d,v:DATA.glucose[d].avg}))},
+  rhr:{name:'Resting HR', get:()=>seriesFrom(DATA.rhr)},
+  steps:{name:'Steps', get:()=>seriesFrom(DATA.steps)},
+  stress:{name:'Stress', get:()=>seriesFrom(DATA.stress)},
+  sleep:{name:'Sleep score', get:()=>seriesFrom(DATA.sleep)},
+  hrv:{name:'HRV', get:()=>seriesFrom(DATA.hrv)},
+  bb:{name:'Body battery', get:()=>seriesFrom(DATA.bb)}
+};
+function seriesFrom(obj){ return Object.keys(obj).sort().map(d=>({d,v:obj[d]})); }
+
+let MODAL_KEY=null, MODAL_FROM=null, MODAL_TO=null;
+function openModal(key){
+  const m=METRIC_SERIES[key]; if(!m) return;
+  MODAL_KEY=key;
+  const full=m.get();
+  if(full.length){ MODAL_FROM=full[0].d; MODAL_TO=full[full.length-1].d; }
+  document.getElementById('modalTitle').textContent=m.name;
+  document.getElementById('modalBg').classList.add('show');
+  drawModal();
+}
+function drawModal(){
+  const m=METRIC_SERIES[MODAL_KEY]; const full=m.get();
+  const series=full.filter(p=>(!MODAL_FROM||p.d>=MODAL_FROM)&&(!MODAL_TO||p.d<=MODAL_TO));
+  const span = full.length ? `${full.length} days available \u00b7 ${fmtDay(full[0].d)} \u2013 ${fmtDay(full[full.length-1].d)}` : 'No data';
+  document.getElementById('modalRange').innerHTML = span +
+    `<div class="rangefilter">
+      <label>From <input type="date" id="rangeFrom" value="${MODAL_FROM||''}" min="${full.length?full[0].d:''}" max="${full.length?full[full.length-1].d:''}"></label>
+      <label>To <input type="date" id="rangeTo" value="${MODAL_TO||''}" min="${full.length?full[0].d:''}" max="${full.length?full[full.length-1].d:''}"></label>
+      <button id="rangeReset">Reset</button>
+    </div>`;
+  const chart=document.getElementById('modalChart');
+  if(series.length<2){ chart.innerHTML='<div class="empty">'+series.length+' day in range \u2014 widen the dates for a line.</div>'; }
+  else { chart.innerHTML = histLine(series.map(p=>p.v), series.map(p=>fmtDayShort(p.d))); }
+  const rf=document.getElementById('rangeFrom'), rt=document.getElementById('rangeTo');
+  if(rf) rf.onchange=e=>{ MODAL_FROM=e.target.value; drawModal(); };
+  if(rt) rt.onchange=e=>{ MODAL_TO=e.target.value; drawModal(); };
+  const rr=document.getElementById('rangeReset');
+  if(rr) rr.onclick=()=>{ if(full.length){MODAL_FROM=full[0].d; MODAL_TO=full[full.length-1].d;} drawModal(); };
+}
+function fmtDayShort(d){ const dt=new Date(d+'T00:00'); return (dt.getMonth()+1)+'/'+dt.getDate(); }
+function histLine(vals,labels){
+  const W=540,H=190,padL=34,padR=14,bot=26;
+  const ymin=Math.min(...vals), ymax=Math.max(...vals), rng=(ymax-ymin)||1;
+  const X=i=>padL+i/(vals.length-1)*(W-padL-padR);
+  const Y=v=>H-bot-(v-ymin)/rng*(H-bot-20);
+  const line=vals.map((v,i)=>X(i)+','+Y(v)).join(' ');
+  const many=vals.length>10;
+  const lstep=Math.ceil(vals.length/7);
+  let dots='';
+  vals.forEach((v,i)=>{
+    dots+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${many?2.5:3.5}" fill="var(--accent)"/>`;
+    // label every point if few, else label min/max/last and every lstep
+    const isKey = !many || i%lstep===0 || i===vals.length-1 || v===ymax || v===ymin;
+    if(isKey) dots+=`<text class="ptlbl" x="${X(i)}" y="${Y(v)-8}" text-anchor="middle" style="font-size:${many?9:10}px;">${Math.round(v)}</text>`;
+    if(i%lstep===0||i===vals.length-1) dots+=`<text class="axlbl" x="${X(i)}" y="${H-7}" text-anchor="middle">${labels[i]}</text>`;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="History line">
+    <text class="axlbl" x="2" y="${Y(ymax)+3}">${Math.round(ymax)}</text>
+    <text class="axlbl" x="2" y="${Y(ymin)+3}">${Math.round(ymin)}</text>
+    <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    ${dots}
+  </svg>`;
+}
+
+
+function normDate(s){
+  s=(s||'').trim().replace(/^\uFEFF/,'');
+  let m;
+  if(/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0,10);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if((m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) return m[3]+'-'+pad(m[1])+'-'+pad(m[2]);
+  if((m=s.match(/^([A-Za-z]{3})\s+(\d{1,2})$/))){ const mo={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'}[m[1]]; if(mo) return '2026-'+mo+'-'+pad(m[2]); }
+  return null;
+}
+function pad(n){ n=String(n); return n.length<2?'0'+n:n; }
+function parseCSV(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  const rows=lines.map(l=>l.split(','));
+  const header=rows[0].map(h=>h.trim().replace(/^\uFEFF/,''));
+  return {header, rows:rows.slice(1)};
+}
+function detectAndMerge(filename, text){
+  const {header, rows} = parseCSV(text);
+  const H = header.map(h=>h.toLowerCase());
+  let kind=null, added=0;
+
+  // Ultrahuman glucose: Timestamp, Glucose Reading/Event
+  if(H.some(h=>h.includes('glucose')) && H.some(h=>h.includes('timestamp'))){
+    kind='glucose';
+    const byDay={};
+    rows.forEach(r=>{
+      const ts=r[0], val=parseFloat(r[1]);
+      if(!ts||isNaN(val)) return;
+      const d=ts.slice(0,10);
+      const t=new Date(ts); const mins=t.getHours()*60+t.getMinutes();
+      (byDay[d]=byDay[d]||[]).push([mins,val]);
+    });
+    for(const d in byDay){
+      const pts=byDay[d].sort((a,b)=>a[0]-b[0]);
+      const vals=pts.map(p=>p[1]);
+      const avg=Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+      const tir=Math.round(vals.filter(v=>v>=70&&v<=110).length/vals.length*100);
+      const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
+      const sd=Math.round(Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length)*10)/10;
+      const spikes=detectSpikes(pts);
+      DATA.glucose[d]={avg,tir,sd,curve:pts.filter((_,i)=>i%5===0).map(p=>[p[0],Math.round(p[1])]),spikes};
+      added++;
+    }
+  }
+  // Garmin single-value files: date + one numeric col. Identify by header keyword.
+  else {
+    let target=null, col=1;
+    const hj=H.join(' ');
+    if(hj.includes('resting heart rate')) {target='rhr'; col=H.findIndex(h=>h.includes('resting'));}
+    else if(hj.includes('stress')) {target='stress'; col=H.findIndex(h=>h.includes('stress'));}
+    else if(hj.includes('actual')||filename.toLowerCase().includes('step')) {target='steps'; col=H.findIndex(h=>h.includes('actual')); if(col<0)col=1;}
+    else if(hj.includes('score')&&hj.includes('duration')) {target='sleepfile';} // full sleep file
+    else if(hj.includes('overnight hrv')) {target='hrv'; col=H.findIndex(h=>h.includes('overnight'));}
+
+    if(target==='sleepfile'){
+      const idx={}; header.forEach((h,i)=>idx[h.trim()]=i);
+      rows.forEach(r=>{
+        const d=normDate(r[0]); if(!d) return;
+        if(idx['Score']!=null && r[idx['Score']]) {DATA.sleep[d]=parseInt(r[idx['Score']]); added++;}
+        if(idx['HRV Status']!=null && r[idx['HRV Status']]) DATA.hrv[d]=parseInt(r[idx['HRV Status']]);
+        if(idx['Body Battery']!=null && r[idx['Body Battery']]) DATA.bb[d]=parseInt(r[idx['Body Battery']]);
+      });
+      kind='sleep';
+    } else if(target){
+      kind=target;
+      rows.forEach(r=>{
+        const d=normDate(r[0]); if(!d) return;
+        const v=parseFloat(String(r[col]).replace('ms','').trim());
+        if(!isNaN(v)){ DATA[target][d]=v; added++; }
+      });
+    }
+  }
+  return {kind, added};
+}
+function detectSpikes(pts){
+  const spikes=[]; let i=0;
+  while(i<pts.length){
+    const t0=pts[i][0], g0=pts[i][1]; let peakv=g0, peakt=t0, j=i+1;
+    while(j<pts.length && pts[j][0]-t0<=60){ if(pts[j][1]>peakv){peakv=pts[j][1]; peakt=pts[j][0];} j++; }
+    if(peakv-g0>=30){
+      let rec=null;
+      for(let m=i;m<pts.length;m++){ if(pts[m][0]>=peakt && pts[m][1]<=g0+15){ rec=pts[m][0]-peakt; break; } }
+      spikes.push({start:t0,startv:Math.round(g0),peakv:Math.round(peakv),rise:peakt-t0,recover:rec});
+      while(i<pts.length && pts[i][0]<peakt) i++;
+      i++;
+    } else i++;
+  }
+  return spikes;
+}
+
+function handleFiles(fileList){
+  const files=[...fileList]; let done=0, summary=[];
+  if(!files.length) return;
+  files.forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const res=detectAndMerge(f.name, reader.result);
+        summary.push(res.kind?`${res.kind}: +${res.added} day(s)`:`${f.name}: unrecognized`);
+      }catch(err){ summary.push(`${f.name}: error`); }
+      done++;
+      if(done===files.length){
+        // refresh glucose day list + go to newest glucose day
+        const newG=Object.keys(DATA.glucose).sort();
+        glucoseDays.length=0; newG.forEach(d=>glucoseDays.push(d));
+        DAYS=allDays(); curIdx=DAYS.length-1;
+        render();
+        alert('Merged:\n'+summary.join('\n'));
+      }
+    };
+    reader.readAsText(f);
+  });
+}
+
+document.getElementById('modalClose').onclick=()=>document.getElementById('modalBg').classList.remove('show');
+document.getElementById('modalBg').onclick=e=>{ if(e.target.id==='modalBg') e.currentTarget.classList.remove('show'); };
+document.getElementById('prevDay').onclick=()=>{ if(curIdx>0){curIdx--; render();} };
+document.getElementById('nextDay').onclick=()=>{ if(curIdx<DAYS.length-1){curIdx++; render();} };
+document.getElementById('datePick').onchange=(e)=>{
+  const v=e.target.value;
+  let idx=DAYS.indexOf(v);
+  if(idx<0){ // date not in data: find nearest available day
+    DAYS.push(v); DAYS.sort(); idx=DAYS.indexOf(v);
+  }
+  curIdx=idx; render();
+};
+document.getElementById('heroBlock').onclick=()=>{ if(phi(DAYS[curIdx])!=null||glucoseDays.length>=2) openModal('phi'); };
+document.getElementById('uploadBtn').onclick=()=>document.getElementById('uploadInput').click();
+document.getElementById('uploadInput').onchange=(e)=>{ handleFiles(e.target.files); e.target.value=''; };
+
+(function(){ const dp=document.getElementById('datePick'); if(DAYS.length){ dp.min=DAYS[0]; dp.max=DAYS[DAYS.length-1]; } })();
+render();
+</script>
+</body>
+</html>
