@@ -161,7 +161,7 @@ const INSIGHT = {
 function subScores(day){
   const g = DATA.glucose[day];
   return {
-    glucose: g ? clamp(g.tir) : null,
+    glucose: (g && g.tir!=null) ? clamp(g.tir) : null,
     rhr: DATA.rhr[day]!=null ? clamp((75-DATA.rhr[day])/25*100) : null,
     steps: DATA.steps[day]!=null ? clamp(DATA.steps[day]/10000*100) : null,
     stress: DATA.stress[day]!=null ? clamp(100-DATA.stress[day]) : null
@@ -276,6 +276,10 @@ function renderTracked(day){
 function renderGlucose(day){
   const g=DATA.glucose[day], body=document.getElementById('glucoseBody');
   if(!g){ body.innerHTML='<div class="empty">No glucose data for this day. Upload a CGM file that covers it.</div>'; return; }
+  if(g.summaryOnly || !g.curve || !g.curve.length){
+    body.innerHTML='<div class="gstats"><div class="gs"><div class="l">Average (from screenshot)</div><div class="v">'+g.avg+'</div></div></div><div class="hint">Summary only \u2014 upload the CGM CSV for this day to see the full curve, time-in-range, and spikes.</div>';
+    return;
+  }
   let h = `<div class="gstats">
     <div class="gs"><div class="l">Time in range</div><div class="v" style="color:${scoreColor(g.tir)}">${g.tir}%</div></div>
     <div class="gs"><div class="l">Average</div><div class="v">${g.avg}</div></div>
@@ -552,7 +556,7 @@ render();
 
 
 function mergeMetrics(m){
-  // m: {date, glucose_avg, resting_hr, steps, stress, sleep_score, hrv, body_battery}
+  // Merge like a CSV: add/update values, NEVER destroy an existing glucose curve.
   const d = m.date && /^\d{4}-\d{2}-\d{2}$/.test(m.date) ? m.date : DAYS[curIdx];
   let added=[];
   if(m.resting_hr!=null){ DATA.rhr[d]=+m.resting_hr; added.push('resting HR'); }
@@ -561,8 +565,16 @@ function mergeMetrics(m){
   if(m.sleep_score!=null){ DATA.sleep[d]=+m.sleep_score; added.push('sleep'); }
   if(m.hrv!=null){ DATA.hrv[d]=+m.hrv; added.push('HRV'); }
   if(m.body_battery!=null){ DATA.bb[d]=+m.body_battery; added.push('body battery'); }
-  if(m.glucose_avg!=null && !DATA.glucose[d]){
-    DATA.glucose[d]={avg:+m.glucose_avg, tir:null, sd:null, curve:[], spikes:[]}; added.push('glucose avg');
+  if(m.glucose_avg!=null){
+    const ex=DATA.glucose[d];
+    if(ex && ex.curve && ex.curve.length){
+      // existing rich day from a CGM CSV: only fill the avg if missing, keep curve/tir/spikes
+      if(ex.avg==null){ ex.avg=+m.glucose_avg; added.push('glucose avg'); }
+    } else {
+      // no existing curve: store a summary-only glucose entry (avg only, panels show "summary")
+      DATA.glucose[d]={avg:+m.glucose_avg, tir:null, sd:null, curve:[], spikes:[], summaryOnly:true};
+      added.push('glucose avg');
+    }
   }
   DAYS=allDays();
   const gd=Object.keys(DATA.glucose).sort(); glucoseDays.length=0; gd.forEach(x=>glucoseDays.push(x));
@@ -587,8 +599,11 @@ document.getElementById('scanInput').onchange=(e)=>{
       if(out.error){ alert('Could not read screenshot: '+out.error); }
       else if(out.metrics && Object.keys(out.metrics).length){
         const r=mergeMetrics(out.metrics);
-        alert('Read from screenshot ('+r.date+'):\n'+(r.added.length?r.added.join(', '):'nothing recognized'));
-      } else { alert('No health metrics found in that image.'); }
+        if(r.error==='range'){ alert('That looks like a multi-day or average view (e.g. a 4-week chart). Use a single-DAY screen so the numbers attach to the right date.'); }
+        else if(r.error==='nodate'){ alert('Could not tell which day this is for. Use a screenshot that clearly shows one date.'); }
+        else if(r.added.length){ alert('Merged into '+r.date+': '+r.added.join(', ')); }
+        else { alert('Nothing new recognized in that image.'); }
+      } else { alert('No single-day health metrics found in that image.'); }
     }catch(err){ alert('Scan failed: '+err); }
     btn.textContent='\uD83D\uDCF7 Scan';
     e.target.value='';
