@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Personal Health Index</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0f1115">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+
 <style>
   :root{
     --bg:#0f1115; --card:#1a1d23; --card2:#22262e; --line:#2c313a;
@@ -543,6 +547,9 @@ document.getElementById('uploadInput').onchange=(e)=>{ handleFiles(e.target.file
 
 (function(){ const dp=document.getElementById('datePick'); if(DAYS.length){ dp.min=DAYS[0]; dp.max=DAYS[DAYS.length-1]; } })();
 render();
+
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }); }
+
 </script>
 </body>
 </html>
