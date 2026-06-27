@@ -93,8 +93,10 @@
       <button id="prevDay">&#8249;</button>
       <input type="date" id="datePick" class="datepick">
       <button id="nextDay">&#8250;</button>
-      <button class="upload-btn" id="uploadBtn">&#8593; Upload</button>
+      <button class="upload-btn" id="uploadBtn">&#8593; CSV</button>
+      <button class="upload-btn" id="scanBtn">&#128247; Scan</button>
       <input type="file" class="upload-input" id="uploadInput" multiple accept=".csv">
+      <input type="file" class="upload-input" id="scanInput" accept="image/*">
     </div>
   </div>
 
@@ -547,6 +549,52 @@ document.getElementById('uploadInput').onchange=(e)=>{ handleFiles(e.target.file
 
 (function(){ const dp=document.getElementById('datePick'); if(DAYS.length){ dp.min=DAYS[0]; dp.max=DAYS[DAYS.length-1]; } })();
 render();
+
+
+function mergeMetrics(m){
+  // m: {date, glucose_avg, resting_hr, steps, stress, sleep_score, hrv, body_battery}
+  const d = m.date && /^\d{4}-\d{2}-\d{2}$/.test(m.date) ? m.date : DAYS[curIdx];
+  let added=[];
+  if(m.resting_hr!=null){ DATA.rhr[d]=+m.resting_hr; added.push('resting HR'); }
+  if(m.steps!=null){ DATA.steps[d]=+m.steps; added.push('steps'); }
+  if(m.stress!=null){ DATA.stress[d]=+m.stress; added.push('stress'); }
+  if(m.sleep_score!=null){ DATA.sleep[d]=+m.sleep_score; added.push('sleep'); }
+  if(m.hrv!=null){ DATA.hrv[d]=+m.hrv; added.push('HRV'); }
+  if(m.body_battery!=null){ DATA.bb[d]=+m.body_battery; added.push('body battery'); }
+  if(m.glucose_avg!=null && !DATA.glucose[d]){
+    DATA.glucose[d]={avg:+m.glucose_avg, tir:null, sd:null, curve:[], spikes:[]}; added.push('glucose avg');
+  }
+  DAYS=allDays();
+  const gd=Object.keys(DATA.glucose).sort(); glucoseDays.length=0; gd.forEach(x=>glucoseDays.push(x));
+  curIdx=DAYS.indexOf(d); if(curIdx<0) curIdx=DAYS.length-1;
+  render();
+  return {date:d, added};
+}
+
+document.getElementById('scanBtn').onclick=()=>document.getElementById('scanInput').click();
+document.getElementById('scanInput').onchange=(e)=>{
+  const f=e.target.files[0]; if(!f) return;
+  const btn=document.getElementById('scanBtn');
+  btn.textContent='\u23F3 Reading...';
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    try{
+      const resp=await fetch('/api/parse',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ image: reader.result })
+      });
+      const out=await resp.json();
+      if(out.error){ alert('Could not read screenshot: '+out.error); }
+      else if(out.metrics && Object.keys(out.metrics).length){
+        const r=mergeMetrics(out.metrics);
+        alert('Read from screenshot ('+r.date+'):\n'+(r.added.length?r.added.join(', '):'nothing recognized'));
+      } else { alert('No health metrics found in that image.'); }
+    }catch(err){ alert('Scan failed: '+err); }
+    btn.textContent='\uD83D\uDCF7 Scan';
+    e.target.value='';
+  };
+  reader.readAsDataURL(f);
+};
 
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }); }
 
